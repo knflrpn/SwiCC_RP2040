@@ -21,7 +21,7 @@ All serial commands begin with "+", then an instruction, then a space character.
 | SLAG | Decimal number 0-120 | Sets the amount of lag, in frames, for the lagged queue. |
 | VSD | Four hex digits | Sets the VSYNC delay. Should be between 0x0000 and 0x3A00. |
 | GCS | None | Gets the USB connection status, returning "+GCS \_\r\n" where _ is 0 or 1. |
-| GQF | None | Gets the queue buffer fullness, returning four hex digits. |
+| GQF | None | Gets the queue buffer fullness, returning "GQF [four hex digits]\r\n". |
 | SRC | None | Continues sending recording. |
 | VSYNC | 0 or 1 | Enables or disables VSYNC synchronization. |
 
