@@ -43,3 +43,6 @@ The `VSYNC 1` instruction must be executed to enable synchronization.  `VSYNC 0`
 
 ## The Lagged Queue
 Using the QL instruction is similar to the IMM instruction in that it should be used to set real-time controller states, but the state will be added to a buffer and played a fixed amount of time in the future.  The amount of time in the future is controller by the SLAG instruction.  This is a gimmick functionality intended to make it more difficult to play games.
+
+## Status LED
+A WS2812 ("Neopixel") LED can be connected to GPIO 16 to display connection state and a heartbeat.
