@@ -13,14 +13,14 @@ All serial commands begin with "+", then an instruction, then a space character.
 
 | Instruction | Parameter | Description |
 |--|--|--|
-| ID | None | Returns `+SwiCC\r\n` to identify the connected hardware. |
+| ID | None | Returns "+SwiCC\r\n" to identify the connected hardware. |
 | LED | 0 or 1 | Disables or enables NeoPixel feedback LED. |
 | IMM | Controller state | Sets the immediate controller state. |
 | Q | Controller state | Adds the controller state to the queue. |
 | QL | Controller state | Adds the controller state to the lagged queue. |
 | SLAG | Decimal number 0-120 | Sets the amount of lag, in frames, for the lagged queue. |
 | VSD | Four hex digits | Sets the VSYNC delay. Should be between 0x0000 and 0x3A00. |
-| GCS | None | Gets the USB connection status, returning `+GCS _\r\n` where _ is 0 or 1. |
+| GCS | None | Gets the USB connection status, returning "+GCS \_\r\n" where _ is 0 or 1. |
 | GQF | None | Gets the queue buffer fullness, returning four hex digits. |
 | SRC | None | Continues sending recording. |
 | VSYNC | 0 or 1 | Enables or disables VSYNC synchronization. |
