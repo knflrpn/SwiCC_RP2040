@@ -22,7 +22,6 @@ All serial commands begin with "+", then an instruction, then a space character.
 | VSD | Four hex digits | Sets the VSYNC delay. Should be between 0x0000 and 0x3A00. |
 | GCS | None | Gets the USB connection status, returning "+GCS \_\r\n" where _ is 0 or 1. |
 | GQF | None | Gets the queue buffer fullness, returning "GQF [four hex digits]\r\n". |
-| SRC | None | Continues sending recording. |
 | VSYNC | 0 or 1 | Enables or disables VSYNC synchronization. |
 
 Controller state (as needed for commands) is a 17-digit hex string representing 7 bytes of data.
