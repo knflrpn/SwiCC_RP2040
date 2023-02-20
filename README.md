@@ -25,12 +25,14 @@ All serial commands begin with "+", then an instruction, then a space character.
 | VSYNC | 0 or 1 | Enables or disables VSYNC synchronization. |
 
 Controller state (as needed for commands) is a 17-digit hex string representing 7 bytes of data.
-- Byte 0 (first btye in string): upper buttons.
+- Byte 0 (first byte in string): upper buttons.
 - Byte 1: lower buttons
 - Byte 2: D-pad
 - Bytes 3-6: Analog stick values (LX, LY, RX, RY)
 
-Optionally, only the first three bytes can be sent if the analog sticks are not needed.  In that case, they will be set to neutral.
+The upper/lower buttons are a bit mask indicating which buttons are pressed.  The order for the upper buttons is, in order of bit0-bit4, [minus, plus, left stick, right stick, home, capture].  The lower buttons are, in order of bit0-bit7, [Y, B, A, X, L, R, ZL, ZR].  For the d-pad, a value of 8 is neutral, and a value of 0-7 indicates a direction being pressed, with 0 indicating up, 1 indicating up-right, 2 indicating right, and continuing clockwise up to 7 (up-left).
+
+Optionally, only the first three bytes of a controller state can be sent (with IMM, Q, or QL commands) if the analog sticks are not needed.  In that case, they will be set to neutral.
 
 ## The Queue
 SwiCC allows you to add controller states to a queue, which will be played back automatically, one per frame.  This is intended for TAS playback.
