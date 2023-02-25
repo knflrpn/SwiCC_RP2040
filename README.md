@@ -7,7 +7,7 @@ Enumerates as a controller for a Nintendo Switch, and lets you control that cont
 Once the SwiCC_RP2040 firmware is installed on the RP2040 board, you can use the serial API to control the controller. The API allows you to send commands to the board over a serial connection (115200 baud).  Serial TX (from the RP2040) is pin 0 and RX (into the board) is pin 1.
 
 ## Serial API
-All serial commands begin with "+", then an instruction, then a space character.  Most instruction take a parameter after the space.  All serial commands end with a newline.  For example, `+LED 0\n` disables the NeoPixel status LED.
+All serial commands begin with "+", then an instruction, then a space character.  Most instructions take a parameter after the space.  All serial commands end with a newline.  For example, `+LED 0\n` disables the NeoPixel status LED.
 
 ### Instructions
 
