@@ -50,6 +50,6 @@ Using the QL instruction is similar to the IMM instruction in that it should be 
 A WS2812 ("Neopixel") LED can be connected to GPIO 16 to display connection state and a heartbeat.  The ideal board is a WaveShare RP2040 Zero board, which has an onboard LED already connected.
 
 ## Assembly
-The recommended assembly is to configure a second Waveshare RP2040 board as a USB-UART adapter using [this file](/documentation/USB_UART_RP2040.uf2) and then mounting both boards in an enclosure. A custom box is available (here)[https://www.printables.com/model/408393-swicc-box].  If using this method, cross-wire pins 0 and 1 (0->1 and 1->0) between the boards and connect their grounds.
+The recommended assembly is to configure a second Waveshare RP2040 board as a USB-UART adapter using [this file](/documentation/USB_UART_RP2040.uf2) and then mounting both boards in an enclosure. A custom box is available [here](https://www.printables.com/model/408393-swicc-box).  If using this method, cross-wire pins 0 and 1 (0->1 and 1->0) between the boards and connect their grounds.
 
 ![Alt text](/documentation/SwiCCBox.jpg)
