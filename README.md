@@ -21,7 +21,7 @@ All serial commands begin with "+", then an instruction, then a space character.
 | SLAG | Decimal number 0-120 | Sets the amount of lag, in frames, for the lagged queue. |
 | VSD | Four hex digits | Sets the VSYNC delay. Should be between 0x0000 and 0x3A00. |
 | GCS | None | Gets the USB connection status, returning "+GCS \_\r\n" where _ is 0 or 1. |
-| GQF | None | Gets the queue buffer fullness, returning "GQF [four hex digits]\r\n". |
+| GQF | None | Gets the queue buffer fullness, returning "+GQF [four hex digits]\r\n". |
 | VSYNC | 0 or 1 | Enables or disables VSYNC synchronization. |
 
 Controller state (as needed for commands) is a 17-digit hex string representing 7 bytes of data.
@@ -48,3 +48,8 @@ Using the QL instruction is similar to the IMM instruction in that it should be 
 
 ## Status LED
 A WS2812 ("Neopixel") LED can be connected to GPIO 16 to display connection state and a heartbeat.  The ideal board is a WaveShare RP2040 Zero board, which has an onboard LED already connected.
+
+## Assembly
+The recommended assembly is to configure a second Waveshare RP2040 board as a USB-UART adapter using [this file](/documentation/USB_UART_RP2040.uf2) and then mounting both boards in an enclosure. A custom box is available (here)[https://www.printables.com/model/408393-swicc-box].  If using this method, cross-wire pins 0 and 1 (0->1 and 1->0) between the boards and connect their grounds.
+
+![Alt text](/documentation/SwiCCBox.jpg)

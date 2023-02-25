@@ -23,6 +23,10 @@
  *
  */
 
+/*
+ * Modified 2021, 2022, 2023 by KNfLrPn
+ */
+
 #ifndef _TUSB_CONFIG_H_
 #define _TUSB_CONFIG_H_
 
