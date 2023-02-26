@@ -4,6 +4,8 @@ Switch Controller Controller for RP2040 boards
 Enumerates as a controller for a Nintendo Switch, and lets you control that controller via Serial commands.
 
 ## Usage
+The recommended development board is a Waveshare RP2040 Zero because of its small size and onboard RGB LED, but any RP2040 board should work with appropriate configuration changes.  The precompiled firmware in the releases assume this board.
+
 Once the SwiCC_RP2040 firmware is installed on the RP2040 board, you can use the serial API to control the controller. The API allows you to send commands to the board over a serial connection (115200 baud).  Serial TX (from the RP2040) is pin 0 and RX (into the board) is pin 1.
 
 There is a web interface to make game controller i/o easier if that's what you plan to do with it: see [https://github.com/knflrpn/GLaMS](https://github.com/knflrpn/GLaMS).
