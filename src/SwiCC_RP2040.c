@@ -151,7 +151,7 @@ void tud_resume_cb(void)
 
 // Invoked when sent REPORT successfully to host
 // Nothing to do here, since there's only one report.
-void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint8_t len)
+void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_t len)
 {
     (void)instance;
     (void)len;
