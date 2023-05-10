@@ -62,6 +62,7 @@ uint8_t uart_count = 0;
 uint8_t sent_count = 0;
 uint8_t lag_amount = 0;
 bool recording = false;
+bool recording_wrap = false;
 
 //--------------------------------------------------------------------
 // Main
@@ -340,6 +341,7 @@ void on_uart_rx()
             {
                 if (cmd_str[4] == '1') {
                     rec_head = 0;
+                    recording_wrap = false;
                     memcpy(&(rec_data_buff[rec_head]), &current_con, sizeof(USB_ControllerReport_Input_t));
                     recording = true;
                 } else {
@@ -362,32 +364,55 @@ void on_uart_rx()
             {
                 uart_resp_int("GQF", get_queue_fill());
             }
+
             // Get recording buffer fullness
             if (strncmp(cmd_str, "GRF ", 4) == 0)
             {
-                uart_resp_int("GRF", (unsigned int)(rec_head));
+                // If recording has wrapped, it is full
+                if (recording_wrap) {
+                    uart_resp_int("GRF", (unsigned int)(REC_BUFF_LEN));
+                } else {
+                    uart_resp_int("GRF", (unsigned int)(rec_head));
+                }
             }
             // Get recording buffer remaining
             if (strncmp(cmd_str, "GRR ", 4) == 0)
             {
-                uart_resp_int("GRR", (unsigned int)(REC_BUFF_LEN - rec_head));
+                // If recording has wrapped, it is empty
+                if (recording_wrap) {
+                    uart_resp_int("GRR", (unsigned int)(0));
+                } else {
+                    uart_resp_int("GRR", (unsigned int)(REC_BUFF_LEN - rec_head));
+                }
+            }
+            // Get total recording buffer size
+            if (strncmp(cmd_str, "GRB ", 4) == 0)
+            {
+                // If recording has wrapped, it is empty
+                uart_resp_int("GRB", (unsigned int)(REC_BUFF_LEN));
             }
 
-            // Get recording from the beginning
+            // Retrieve recording
             if (strncmp(cmd_str, "GR ", 3) == 0)
             {
                 if (cmd_str[3] == '0') {
-                    stream_head = 0;
+                    // Start at beginning
+                    if (recording_wrap) {
+                        // If wrapped, oldest value is just in front of head
+                        stream_head = (rec_head + 1) % REC_BUFF_LEN;
+                    } else {
+                        stream_head = 0;
+                    }
                 }
                 send_recording();
-                if (stream_head >= rec_head)
+                if (stream_head == rec_head)
                 {
-                    // end of stream
+                    // end of stream, entire recording has been sent
                     uart_puts(UART_ID, "+GR 0\r\n");
                 }
                 else
                 {
-                    // end of stream with more pending
+                    // end of stream but more is pending
                     uart_puts(UART_ID, "+GR 1\r\n");
                 }
             }
@@ -467,47 +492,55 @@ void uart_resp_int(const char *header, unsigned int msg)
 
 /* Send a set of the recording
  */
+void send_recording_entry(buff_index) {
+    char msgstr[5];
+
+    // Header
+    uart_putc(UART_ID, '+');
+    uart_putc(UART_ID, 'R');
+    uart_putc(UART_ID, ' ');
+
+    // Controller state
+    sprintf(msgstr, "%04X", rec_data_buff[stream_head].Button);
+    uart_puts(UART_ID, msgstr);
+
+    sprintf(msgstr, "%02X", rec_data_buff[stream_head].HAT);
+    uart_puts(UART_ID, msgstr);
+
+    sprintf(msgstr, "%02X", rec_data_buff[stream_head].LX);
+    uart_puts(UART_ID, msgstr);
+
+    sprintf(msgstr, "%02X", rec_data_buff[stream_head].LY);
+    uart_puts(UART_ID, msgstr);
+
+    sprintf(msgstr, "%02X", rec_data_buff[stream_head].RX);
+    uart_puts(UART_ID, msgstr);
+
+    sprintf(msgstr, "%02X", rec_data_buff[stream_head].RY);
+    uart_puts(UART_ID, msgstr);
+
+    // RLE count
+    uart_putc(UART_ID, 'x');
+
+    sprintf(msgstr, "%02X", rec_rle_buff[stream_head]);
+    uart_puts(UART_ID, msgstr);
+
+    // Termination
+    uart_putc(UART_ID, '\r');
+    uart_putc(UART_ID, '\n');
+
+}
 void send_recording()
 {
 
-    char msgstr[5];
-    for (uint8_t i = 0; i < 16; i++)
+    for (uint8_t i = 0; i < 30 && stream_head != rec_head; i++)
     {
-        if (stream_head <= rec_head)
-        {
-            // write all the data, pausing if needed
-            uart_putc(UART_ID, '+');
-            uart_putc(UART_ID, 'R');
-            uart_putc(UART_ID, ' ');
-
-            sprintf(msgstr, "%04X", rec_data_buff[stream_head].Button);
-            uart_puts(UART_ID, msgstr);
-
-            sprintf(msgstr, "%02X", rec_data_buff[stream_head].HAT);
-            uart_puts(UART_ID, msgstr);
-
-            sprintf(msgstr, "%02X", rec_data_buff[stream_head].LX);
-            uart_puts(UART_ID, msgstr);
-
-            sprintf(msgstr, "%02X", rec_data_buff[stream_head].LY);
-            uart_puts(UART_ID, msgstr);
-
-            sprintf(msgstr, "%02X", rec_data_buff[stream_head].RX);
-            uart_puts(UART_ID, msgstr);
-
-            sprintf(msgstr, "%02X", rec_data_buff[stream_head].RY);
-            uart_puts(UART_ID, msgstr);
-
-            uart_putc(UART_ID, 'x');
-
-            sprintf(msgstr, "%02X", rec_rle_buff[stream_head]);
-            uart_puts(UART_ID, msgstr);
-
-            uart_putc(UART_ID, '\r');
-            uart_putc(UART_ID, '\n');
-
-            stream_head++;
-        }
+        send_recording_entry(stream_head);
+        stream_head = (stream_head + 1) % REC_BUFF_LEN;
+    }
+    // Send the current controller state if needed
+    if (stream_head == rec_head) {
+        send_recording_entry(stream_head);
     }
 }
 
@@ -588,12 +621,6 @@ unsigned int get_queue_fill()
     }
 }
 
-/* Returns the amount of space currently used in the recording buffer.
- */
-unsigned int get_recording_fill()
-{
-    return (unsigned int)(rec_head);
-}
 
 /* Set a new forced controller state (aka an immediate state).
  *  Data is a hex-encoded string.
@@ -702,17 +729,18 @@ static void alarm_irq(void)
             // One more of the same
             rec_rle_buff[rec_head] += 1;
         } else {
-            // Different, or out of length.
-            if (rec_head < (REC_BUFF_LEN-1)) {
-                // increment index
-                rec_head++;
-                // Copy to record buffer
-                memcpy(&(rec_data_buff[rec_head]), &current_con, sizeof(USB_ControllerReport_Input_t));
-                rec_rle_buff[rec_head] = 1;
+            // Controller data has changed, or max rle length reached.
+            // increment index
+            rec_head++;
+            if (rec_head == REC_BUFF_LEN) {
+                rec_head = 0;
+                recording_wrap = true;
             }
+            // Copy to record buffer
+            memcpy(&(rec_data_buff[rec_head]), &current_con, sizeof(USB_ControllerReport_Input_t));
+            rec_rle_buff[rec_head] = 1;
         }
     }
-
 }
 
 /* Set up an alarm in the future.
