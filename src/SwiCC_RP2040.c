@@ -46,6 +46,7 @@
 USB_ControllerReport_Input_t neutral_con, current_con;
 USB_ControllerReport_Input_t con_data_buff[CON_BUFF_LEN];
 USB_ControllerReport_Input_t rec_data_buff[REC_BUFF_LEN];
+uint8_t rec_rle_buff[REC_BUFF_LEN]; // run length encoding buffer
 unsigned int queue_tail, queue_head, rec_head, stream_head;
 
 // VSYNC timing
@@ -60,6 +61,7 @@ uint8_t vsync_count = 0;
 uint8_t uart_count = 0;
 uint8_t sent_count = 0;
 uint8_t lag_amount = 0;
+bool recording = false;
 
 //--------------------------------------------------------------------
 // Main
@@ -109,7 +111,7 @@ void core1_task()
         {
             // Heartbeat
             uint8_t hb = ((vsync_count % 64) == 0) * 4 | ((vsync_count % 64) == 11) * 32;
-            debug_pixel(urgb_u32(hb, 0, usb_connected * 32));
+            debug_pixel(urgb_u32(hb, 0, usb_connected * 16));
         }
         else
             debug_pixel(urgb_u32(0, 0, 0));
@@ -183,16 +185,9 @@ void hid_task(void)
         {
         case A_PLAY: // play from buffer
         case A_LAG:  // play from lag buffer
-        case A_REC:  // play while recording
         case A_RT:   // Real-time
             tud_hid_report(0, &current_con, sizeof(USB_ControllerReport_Input_t));
             break;
-
-            /*
-                        case A_RT: // play from immediate value
-                        tud_hid_report(0, &rt_con, sizeof(USB_ControllerReport_Input_t));
-                        break;
-            */
         case A_STOP: // output neutral
             tud_hid_report(0, &neutral_con, sizeof(USB_ControllerReport_Input_t));
             break;
@@ -211,6 +206,11 @@ void hid_task(void)
  */
 void buffer_init()
 {
+    // Set pointers
+    queue_tail = 0;
+    rec_head = 0;
+    stream_head = 0;
+    queue_head = 1;
     // Configure a neutral controller state
     neutral_con.LX = 128;
     neutral_con.LY = 128;
@@ -280,9 +280,15 @@ void on_uart_rx()
         {
 
             // ID self
-            if (strncmp(cmd_str, "ID ", 4) == 0)
+            if (strncmp(cmd_str, "ID ", 3) == 0)
             {
-                uart_puts(UART_ID, "+SwiCC\r\n");
+                uart_puts(UART_ID, "+SwiCC \r\n");
+            }
+
+            // Get version
+            if (strncmp(cmd_str, "VER ", 4) == 0)
+            {
+                uart_puts(UART_ID, "+VER 2.0\r\n");
             }
 
             // Add to queue
@@ -330,16 +336,17 @@ void on_uart_rx()
             }
 
             // Start recording
-            if (strncmp(cmd_str, "MREC ", 5) == 0)
+            if (strncmp(cmd_str, "REC ", 4) == 0)
             {
-                rec_head = 0;
-                action_mode = A_REC;
+                if (cmd_str[4] == '1') {
+                    rec_head = 0;
+                    memcpy(&(rec_data_buff[rec_head]), &current_con, sizeof(USB_ControllerReport_Input_t));
+                    recording = true;
+                } else {
+                    recording = false;
+                }
             }
-            // Stop recording
-            if (strncmp(cmd_str, "MSTOP ", 6) == 0)
-            {
-                action_mode = A_STOP;
-            }
+
 
             // Get USB connection status
             if (strncmp(cmd_str, "GCS ", 4) == 0)
@@ -358,38 +365,30 @@ void on_uart_rx()
             // Get recording buffer fullness
             if (strncmp(cmd_str, "GRF ", 4) == 0)
             {
-                uart_resp_int("GRF", get_recording_fill());
+                uart_resp_int("GRF", (unsigned int)(rec_head));
+            }
+            // Get recording buffer remaining
+            if (strncmp(cmd_str, "GRR ", 4) == 0)
+            {
+                uart_resp_int("GRR", (unsigned int)(REC_BUFF_LEN - rec_head));
             }
 
-            // Send recording from the beginning
-            if (strncmp(cmd_str, "SR0 ", 4) == 0)
+            // Get recording from the beginning
+            if (strncmp(cmd_str, "GR ", 3) == 0)
             {
-                stream_head = 0;
+                if (cmd_str[3] == '0') {
+                    stream_head = 0;
+                }
                 send_recording();
                 if (stream_head >= rec_head)
                 {
                     // end of stream
-                    uart_puts(UART_ID, "+SR 0\r\n");
+                    uart_puts(UART_ID, "+GR 0\r\n");
                 }
                 else
                 {
                     // end of stream with more pending
-                    uart_puts(UART_ID, "+SR 1\r\n");
-                }
-            }
-            // Send recording (continue)
-            if (strncmp(cmd_str, "SRC ", 4) == 0)
-            {
-                send_recording();
-                if (stream_head >= rec_head)
-                {
-                    // end of stream
-                    uart_puts(UART_ID, "+SR 0\r\n");
-                }
-                else
-                {
-                    // end of stream with more pending
-                    uart_puts(UART_ID, "+SR 1\r\n");
+                    uart_puts(UART_ID, "+GR 1\r\n");
                 }
             }
 
@@ -403,12 +402,18 @@ void on_uart_rx()
                     gpio_set_irq_enabled_with_callback(VSYNC_IN_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
                     vsync_count = 0;
                 }
-                else
+                else if (cmd_str[6] == '0')
                 {
                     vsync_en = false;
                     // Disable GPIO interrupt
                     gpio_set_irq_enabled(VSYNC_IN_PIN, GPIO_IRQ_EDGE_RISE, false);
                     alarm_in_us(16666); // set an alarm 1/60s in the future
+                }
+                else {
+                    if (vsync_en)
+                        uart_puts(UART_ID, "+VSYNC 1\r\n");
+                    else
+                        uart_puts(UART_ID, "+VSYNC 0\r\n");
                 }
             }
 
@@ -431,7 +436,7 @@ void on_uart_rx()
         {
             // add chars to the string
             if (cmd_str_ind < (sizeof(cmd_str) - 1))
-            { // -1 to maintain null termination
+            {
                 cmd_str[cmd_str_ind] = ch;
                 cmd_str_ind++;
                 uart_count++;
@@ -440,11 +445,11 @@ void on_uart_rx()
     }
 }
 
-/* Respond with an integer encoded in hex, starting with +, ending with newline.
+/* Respond with an integer encoded in hex, starting with + and a header, ending with newline.
  */
 void uart_resp_int(const char *header, unsigned int msg)
 {
-    char msgstr[5] = "00000";
+    char msgstr[5];
 
     sent_count++;
 
@@ -460,19 +465,20 @@ void uart_resp_int(const char *header, unsigned int msg)
     }
 }
 
-/* Send a set of the recording (currently 30 reports)
+/* Send a set of the recording
  */
 void send_recording()
 {
 
-    char msgstr[5] = "00000";
-    for (uint8_t i = 0; i < 30; i++)
+    char msgstr[5];
+    for (uint8_t i = 0; i < 16; i++)
     {
-        if (stream_head < rec_head)
+        if (stream_head <= rec_head)
         {
             // write all the data, pausing if needed
             uart_putc(UART_ID, '+');
             uart_putc(UART_ID, 'R');
+            uart_putc(UART_ID, ' ');
 
             sprintf(msgstr, "%04X", rec_data_buff[stream_head].Button);
             uart_puts(UART_ID, msgstr);
@@ -490,6 +496,11 @@ void send_recording()
             uart_puts(UART_ID, msgstr);
 
             sprintf(msgstr, "%02X", rec_data_buff[stream_head].RY);
+            uart_puts(UART_ID, msgstr);
+
+            uart_putc(UART_ID, 'x');
+
+            sprintf(msgstr, "%02X", rec_rle_buff[stream_head]);
             uart_puts(UART_ID, msgstr);
 
             uart_putc(UART_ID, '\r');
@@ -581,15 +592,7 @@ unsigned int get_queue_fill()
  */
 unsigned int get_recording_fill()
 {
-    // Account for the fact that the buffer wraps around.
-    if (queue_head >= queue_tail)
-    {
-        return (unsigned int)(queue_head - queue_tail);
-    }
-    else
-    {
-        return (unsigned int)(CON_BUFF_LEN - (queue_tail - queue_head));
-    }
+    return (unsigned int)(rec_head);
 }
 
 /* Set a new forced controller state (aka an immediate state).
@@ -605,9 +608,7 @@ int force_con_state(const char *cstr)
     }
 
     // Assume that writing an immediate means the user wants to enter a real-time mode
-    // (which includes recording mode).
-    if (!(action_mode == A_REC))
-        action_mode = A_RT;
+    action_mode = A_RT;
 
     // Write the data to the controller state variable.
     current_con.Button = hex2int(cstr + 0, 4);
@@ -656,17 +657,8 @@ static void alarm_irq(void)
         vsync_count++;
     }
 
-    // If recording, copy real-time buffer to record buffer
-    if (action_mode == A_REC)
-    {
-        // copy to record buffer
-        memcpy(&(rec_data_buff[rec_head]), &current_con, sizeof(USB_ControllerReport_Input_t));
-        // increment index
-        if (rec_head < sizeof(rec_data_buff))
-            rec_head++;
-    }
     // If playing back, move the queue pointers and send the next entry
-    else if (action_mode == A_PLAY)
+    if (action_mode == A_PLAY)
     {
         // Increment tail as long as buffer isn't empty, wrapping when needed
         if (queue_tail != queue_head)
@@ -701,6 +693,26 @@ static void alarm_irq(void)
         // Copy the old head data to the new head
         memcpy(&(con_data_buff[queue_head]), &(con_data_buff[old_head]), sizeof(USB_ControllerReport_Input_t));
     }
+
+    // If recording, copy real-time buffer to record buffer
+    if (recording)
+    {
+        // Implement run-length encoding.
+        if ((rec_rle_buff[rec_head] < 240) && (are_cons_equal(rec_data_buff[rec_head], current_con))) {
+            // One more of the same
+            rec_rle_buff[rec_head] += 1;
+        } else {
+            // Different, or out of length.
+            if (rec_head < (REC_BUFF_LEN-1)) {
+                // increment index
+                rec_head++;
+                // Copy to record buffer
+                memcpy(&(rec_data_buff[rec_head]), &current_con, sizeof(USB_ControllerReport_Input_t));
+                rec_rle_buff[rec_head] = 1;
+            }
+        }
+    }
+
 }
 
 /* Set up an alarm in the future.

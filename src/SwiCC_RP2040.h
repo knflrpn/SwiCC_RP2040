@@ -45,7 +45,6 @@ typedef enum {
 enum {
 	A_PLAY, // play from buffer
 	A_RT,   // real-time
-	A_REC,  // record
 	A_LAG,  // lag
 	A_STOP  // stop
 };
@@ -77,7 +76,7 @@ enum {
 #define ALARM_IRQ TIMER_IRQ_0
 
 #define CON_BUFF_LEN 256
-#define REC_BUFF_LEN 14400
+#define REC_BUFF_LEN 16384
 
 
 void core1_task(void);
@@ -107,6 +106,18 @@ int hex2int(const char* ch, uint8_t num) {
 		val += tval;
 	}
 	return val;
+}
+
+// Compare two instances of the USB_ControllerReport_Input_t structure
+bool are_cons_equal(USB_ControllerReport_Input_t a, USB_ControllerReport_Input_t b) {
+    if (a.Button != b.Button) return false;
+    if (a.HAT != b.HAT) return false;
+    if (a.LX != b.LX) return false;
+    if (a.LY != b.LY) return false;
+    if (a.RX != b.RX) return false;
+    if (a.RY != b.RY) return false;
+    if (a.VendorSpec != b.VendorSpec) return false;
+    return true;
 }
 
 //--------------------------------------------------------------------
