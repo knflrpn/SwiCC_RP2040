@@ -343,6 +343,7 @@ void on_uart_rx()
                     rec_head = 0;
                     recording_wrap = false;
                     memcpy(&(rec_data_buff[rec_head]), &current_con, sizeof(USB_ControllerReport_Input_t));
+                    rec_rle_buff[rec_head] = 1;
                     recording = true;
                 } else {
                     recording = false;
