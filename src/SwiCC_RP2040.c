@@ -289,7 +289,7 @@ void on_uart_rx()
             // Get version
             if (strncmp(cmd_str, "VER ", 4) == 0)
             {
-                uart_puts(UART_ID, "+VER 2.0\r\n");
+                uart_puts(UART_ID, "+VER 2.1\r\n");
             }
 
             // Add to queue
