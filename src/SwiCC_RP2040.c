@@ -211,7 +211,7 @@ void buffer_init()
     queue_tail = 0;
     rec_head = 0;
     stream_head = 0;
-    queue_head = 1;
+    queue_head = 0;
     // Configure a neutral controller state
     neutral_con.LX = 128;
     neutral_con.LY = 128;
@@ -289,7 +289,7 @@ void on_uart_rx()
             // Get version
             if (strncmp(cmd_str, "VER ", 4) == 0)
             {
-                uart_puts(UART_ID, "+VER 2.1\r\n");
+                uart_puts(UART_ID, "+VER 2.2\r\n");
             }
 
             // Add to queue
@@ -328,6 +328,9 @@ void on_uart_rx()
             if ((strncmp(cmd_str, "IMM ", 4) == 0))
             {
                 force_con_state(cmd_str + 4);
+                // Reset queue
+                queue_head = 0;
+                queue_tail = 0;
             }
 
             // Set VSYNC delay
@@ -491,9 +494,9 @@ void uart_resp_int(const char *header, unsigned int msg)
     }
 }
 
-/* Send a set of the recording
+/* Send an entry of the recording from the stream head
  */
-void send_recording_entry(buff_index) {
+void send_recording_entry() {
     char msgstr[5];
 
     // Header
