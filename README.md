@@ -26,7 +26,7 @@ All serial commands begin with "+", then an instruction, then a space character.
 
 | Instruction | Parameter | Description |
 |--|--|--|
-| ID | None | Returns "+SwiCC\r\n" to identify the connected hardware. |
+| ID | None | Returns "+SwiCC \r\n" to identify the connected hardware. |
 | LED | 0 or 1 | Disables or enables NeoPixel feedback LED. |
 | IMM | Controller state | Sets the immediate controller state. |
 | Q | Controller state | Adds the controller state to the queue. |
